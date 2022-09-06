@@ -12,7 +12,7 @@ variable "environment" {
 variable "aws_region" {
   description = "AWS region to deploy the application"
   type        = string
-  default     = "us-east-2"
+  default     = "us-east-1"
 }
 
 variable "database_instance_class" {
