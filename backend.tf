@@ -39,7 +39,7 @@ resource "aws_ecs_task_definition" "backend" {
 [
     {
         "name": "nexxus_backend",
-        "image": "nginx:latest",
+        "image": "${aws_ecr_repository.backend.repository_url}",
         "memory": ${var.backend_resources.memory},
         "essential": true,
         "portMappings": [
@@ -79,5 +79,14 @@ resource "aws_acm_certificate" "backend" {
 
   lifecycle {
     create_before_destroy = true
+  }
+}
+
+resource "aws_ecr_repository" "backend" {
+  name                 = "nexxus-backend"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
   }
 }
