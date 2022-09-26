@@ -1,12 +1,11 @@
+variable "environment" {
+  description = "The environment name"
+  default     = "development"
+}
+
 variable "domain" {
   description = "Domain name to use for the application. It requires setting nameservers to Route53 at registrar."
   type        = string
-}
-
-variable "environment" {
-  description = "Environment name"
-  type        = string
-  default     = "Dev"
 }
 
 variable "aws_region" {
@@ -19,6 +18,13 @@ variable "database_instance_class" {
   description = "AWS profile to use for DB instance"
   type        = string
   default     = "db.t3.micro"
+}
+
+variable "database_password" {
+  description = "Password for the database"
+  type        = string
+  sensitive   = true
+  default     = "postgres"
 }
 
 variable "backend_resources" {

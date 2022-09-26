@@ -1,64 +1,66 @@
-# PostgreSQL database instance
-resource "aws_db_instance" "backend" {
-  # Engine
-  engine         = "postgres"
-  engine_version = "13"
-
-  # Instance type
-  instance_class = var.database_instance_class
-
-  # Allocated storage
-  allocated_storage     = var.database_storage.allocated
-  max_allocated_storage = var.database_storage.max_allocated
-
-  # DB Access
-  db_name  = "postgres"
-  username = "postgres"
-  password = "postgres"
-
-  skip_final_snapshot = true
-}
-
-// Fargate task definition 
 resource "aws_ecs_task_definition" "backend" {
-  family = "nexxus_backend"
+  family = "backend"
 
-  // Fargate is a type of ECS that requires awsvpc network_mode
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
 
-  // Valid sizes are shown here: https://aws.amazon.com/fargate/pricing/
   memory = var.backend_resources.memory
   cpu    = var.backend_resources.cpu
 
-  // Fargate requires task definitions to have an execution role ARN to support ECR images
   execution_role_arn = aws_iam_role.ecs_role.arn
+  task_role_arn      = aws_iam_role.ecs_role.arn
+  depends_on         = [aws_iam_role.ecs_role]
 
-  // Container definition
-  container_definitions = <<EOT
-[
-    {
-        "name": "nexxus_backend",
-        "image": "${aws_ecr_repository.backend.repository_url}",
-        "memory": ${var.backend_resources.memory},
-        "essential": true,
-        "portMappings": [
-            {
-                "containerPort": 80,
-                "hostPort": 80
-            }
-        ]
+  container_definitions = jsonencode([{
+    name      = "backend"
+    image     = aws_ecr_repository.backend.repository_url
+    essential = true
+    linuxParameters = {
+      initProcessEnabled = true
     }
-]
-EOT
+    environment = [
+      {
+        name  = "DATABASE_URL"
+        value = "${local.backend_postgres_url}"
+      },
+      {
+        name  = "NODE_ENV"
+        value = "development"
+      },
+      {
+        name  = "PORT"
+        value = "80"
+      },
+      {
+        name  = "JWT_SECRET"
+        value = "secret"
+      }
+    ]
+    portMappings = [{
+      containerPort = 80
+      hostPort      = 80
+    }],
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = aws_cloudwatch_log_group.backend.name
+        "awslogs-region"        = var.aws_region
+        "awslogs-stream-prefix" = "backend"
+      }
+    }
+  }])
+}
+
+resource "aws_cloudwatch_log_group" "backend" {
+  name = "backend"
 }
 
 resource "aws_ecs_cluster" "backend" {
-  name = "backend_cluster"
+  name = "backend"
 }
 
 resource "aws_ecs_service" "backend" {
-  name = "backend_service"
+  name = "backend"
 
   cluster         = aws_ecs_cluster.backend.id
   task_definition = aws_ecs_task_definition.backend.arn
@@ -66,10 +68,72 @@ resource "aws_ecs_service" "backend" {
   launch_type   = "FARGATE"
   desired_count = var.backend_desired_count
 
+  enable_execute_command = true
+
   network_configuration {
-    subnets          = ["${aws_subnet.public_a.id}", "${aws_subnet.public_b.id}"]
-    security_groups  = ["${aws_security_group.backend.id}"]
+    subnets          = module.vpc.public_subnets
+    security_groups  = [aws_security_group.backend_db.id, aws_security_group.backend.id]
     assign_public_ip = true
+  }
+
+  load_balancer {
+    target_group_arn = aws_alb_target_group.backend.arn
+    container_name   = "backend"
+    container_port   = 80
+  }
+}
+
+resource "aws_lb" "backend" {
+  name = "backend"
+
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.backend.id]
+  subnets            = module.vpc.public_subnets
+
+  enable_deletion_protection = false
+}
+
+resource "aws_alb_target_group" "backend" {
+  name        = "backend"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = module.vpc.vpc_id
+  target_type = "ip"
+
+  health_check {
+    path    = "/"
+    matcher = "200-499"
+  }
+}
+
+resource "aws_alb_listener" "http" {
+  load_balancer_arn = aws_lb.backend.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+
+    redirect {
+      port        = 443
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+resource "aws_alb_listener" "https" {
+  load_balancer_arn = aws_lb.backend.arn
+  port              = 443
+  protocol          = "HTTPS"
+
+  ssl_policy      = "ELBSecurityPolicy-2016-08"
+  certificate_arn = aws_acm_certificate.backend.arn
+
+  default_action {
+    target_group_arn = aws_alb_target_group.backend.id
+    type             = "forward"
   }
 }
 
@@ -82,11 +146,69 @@ resource "aws_acm_certificate" "backend" {
   }
 }
 
-resource "aws_ecr_repository" "backend" {
-  name                 = "nexxus-backend"
-  image_tag_mutability = "MUTABLE"
+resource "aws_security_group" "backend" {
+  name        = "backend"
+  description = "Allow TLS inbound traffic on port 80 (http)"
 
-  image_scanning_configuration {
-    scan_on_push = true
+  vpc_id                 = module.vpc.vpc_id
+  revoke_rules_on_delete = true
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_route53_record" "api" {
+  zone_id = aws_route53_zone.frontend.zone_id
+
+  name = "api.${var.domain}"
+  type = "A"
+
+  alias {
+    zone_id                = aws_lb.backend.zone_id
+    name                   = aws_lb.backend.dns_name
+    evaluate_target_health = false
+  }
+}
+
+# DNS Records for the SSL certificate validation
+resource "aws_route53_record" "backend_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.backend.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      type   = dvo.resource_record_type
+      record = dvo.resource_record_value
+    }
+  }
+
+  zone_id = aws_route53_zone.frontend.zone_id
+
+  allow_overwrite = true
+  name            = each.value.name
+  type            = each.value.type
+  ttl             = 60
+  records         = [each.value.record]
+}
+
+# SSL certificate validation
+resource "aws_acm_certificate_validation" "backend" {
+  certificate_arn         = aws_acm_certificate.backend.arn
+  validation_record_fqdns = [for record in aws_route53_record.backend_validation : record.fqdn]
 }
