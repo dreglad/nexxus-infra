@@ -65,13 +65,18 @@ resource "aws_db_instance" "backend" {
   # DB Access
   db_name  = "postgres"
   username = "postgres"
-  password = var.database_password
+  password = random_password.database_password.result
 
   # Backup
   backup_retention_period = 30
   backup_window           = "02:01-03:00"
 
   apply_immediately = true
+}
+
+resource "random_password" "database_password" {
+  length  = 16
+  special = false
 }
 
 locals {
