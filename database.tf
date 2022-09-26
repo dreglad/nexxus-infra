@@ -77,3 +77,9 @@ resource "aws_db_instance" "backend" {
 locals {
   backend_postgres_url = "postgres://${aws_db_instance.backend.username}:${aws_db_instance.backend.password}@${aws_db_instance.backend.endpoint}/${aws_db_instance.backend.db_name}"
 }
+
+output "backend_db_url" {
+  value     = local.backend_postgres_url
+  sensitive = true
+}
+

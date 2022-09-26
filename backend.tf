@@ -33,7 +33,27 @@ resource "aws_ecs_task_definition" "backend" {
       },
       {
         name  = "JWT_SECRET"
-        value = "secret"
+        value = random_password.backend_jwt_secret.result
+      },
+      {
+        name  = "SMTP_HOST"
+        value = "email-smtp.${var.aws_region}.amazonaws.com"
+      },
+      {
+        name  = "SMTP_PORT"
+        value = "587"
+      },
+      {
+        name  = "SMTP_USERNAME"
+        value = aws_iam_access_key.smtp_user.id
+      },
+      {
+        name  = "SMTP_PASSWORD"
+        value = aws_iam_access_key.smtp_user.ses_smtp_password_v4
+      },
+      {
+        name  = "EMAIL_FROM"
+        value = aws_ses_email_identity.email_from.email
       }
     ]
     portMappings = [{
@@ -49,6 +69,12 @@ resource "aws_ecs_task_definition" "backend" {
       }
     }
   }])
+}
+
+resource "random_password" "backend_jwt_secret" {
+  length           = 16
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
 resource "aws_cloudwatch_log_group" "backend" {
@@ -297,4 +323,8 @@ resource "aws_ecr_repository_policy" "backend" {
     ]
   }
   EOF
+}
+
+output "backend_registry_url" {
+  value = aws_ecr_repository.backend.repository_url
 }
