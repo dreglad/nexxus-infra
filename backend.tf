@@ -176,7 +176,7 @@ resource "aws_security_group" "backend" {
 }
 
 resource "aws_route53_record" "api" {
-  zone_id = aws_route53_zone.frontend.zone_id
+  zone_id = aws_route53_zone.nexxus.zone_id
 
   name = "api.${var.domain}"
   type = "A"
@@ -198,7 +198,7 @@ resource "aws_route53_record" "backend_validation" {
     }
   }
 
-  zone_id = aws_route53_zone.frontend.zone_id
+  zone_id = aws_route53_zone.nexxus.zone_id
 
   allow_overwrite = true
   name            = each.value.name
@@ -211,4 +211,90 @@ resource "aws_route53_record" "backend_validation" {
 resource "aws_acm_certificate_validation" "backend" {
   certificate_arn         = aws_acm_certificate.backend.arn
   validation_record_fqdns = [for record in aws_route53_record.backend_validation : record.fqdn]
+}
+
+# Create IAM role for ECS task execution
+resource "aws_iam_role" "ecs_role" {
+  name = "role_ecs_tasks"
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy" "ecs_execute_role" {
+  name = "ecs_execute_role"
+  role = aws_iam_role.ecs_role.name
+
+  policy = <<EOF
+{
+   "Version": "2012-10-17",
+   "Statement": [
+       {
+       "Effect": "Allow",
+       "Action": [
+            "ssmmessages:CreateControlChannel",
+            "ssmmessages:CreateDataChannel",
+            "ssmmessages:OpenControlChannel",
+            "ssmmessages:OpenDataChannel"
+       ],
+      "Resource": "*"
+      }
+   ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_policy_attachment" {
+  role = aws_iam_role.ecs_role.name
+
+  # This policy adds logging + ECR permissions
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+resource "aws_ecr_repository" "backend" {
+  name                 = "nexxus-backend"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+resource "aws_ecr_repository_policy" "backend" {
+  repository = aws_ecr_repository.backend.name
+  policy     = <<EOF
+  {
+    "Version": "2008-10-17",
+    "Statement": [
+      {
+        "Sid": "ECR Access",
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:BatchGetImage",
+          "ecr:CompleteLayerUpload",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:GetLifecyclePolicy",
+          "ecr:InitiateLayerUpload",
+          "ecr:PutImage",
+          "ecr:UploadLayerPart"
+        ]
+      }
+    ]
+  }
+  EOF
 }

@@ -33,14 +33,24 @@ resource "aws_s3_bucket_policy" "frontend" {
   })
 }
 
+locals {
+  index_html = <<EOF
+<!DOCTYPE html>
+<html lang="en">
+<head><title>Nexxus frontend</title></head>
+<body><h1>Nexxus frontend</h1></body>
+</html>
+EOF
+}
+
 # index.html file (will be ignores after first run)
 resource "aws_s3_object" "frontend_index" {
   bucket = aws_s3_bucket.frontend.id
 
   key          = "index.html"
-  source       = "index.html"
+  content      = local.index_html
   content_type = "text/html"
-  etag         = filemd5("index.html")
+  etag         = md5(local.index_html)
 
   lifecycle {
     ignore_changes = [etag, tags_all]
@@ -51,25 +61,18 @@ resource "aws_s3_object" "frontend_index" {
 resource "aws_acm_certificate" "frontend" {
   domain_name               = var.domain
   subject_alternative_names = ["www.${var.domain}"]
-
-  validation_method = "DNS"
+  validation_method         = "DNS"
 
   lifecycle {
     create_before_destroy = true
   }
 }
 
-
-# DNS zone for the domain name
-resource "aws_route53_zone" "frontend" {
-  name = var.domain
-}
-
 # DNS Records for the frondend website (root and www)
 resource "aws_route53_record" "frontend" {
   for_each = toset(["", "www"])
 
-  zone_id = aws_route53_zone.frontend.zone_id
+  zone_id = aws_route53_zone.nexxus.zone_id
 
   name = each.key
   type = "A"
@@ -91,13 +94,13 @@ resource "aws_route53_record" "frontend_validation" {
     }
   }
 
-  zone_id = aws_route53_zone.frontend.zone_id
+  zone_id = aws_route53_zone.nexxus.zone_id
 
-  allow_overwrite = true
   name            = each.value.name
   type            = each.value.type
   ttl             = 60
   records         = [each.value.record]
+  allow_overwrite = true
 }
 
 # SSL certificate validation
