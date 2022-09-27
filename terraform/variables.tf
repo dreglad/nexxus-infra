@@ -32,7 +32,7 @@ variable "backend_resources" {
   description = "CPU and Memory to allocate to the backend application container"
   default = {
     "cpu"    = "256"
-    "memory" = "512"
+    "memory" = "1024"
   }
 }
 
