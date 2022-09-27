@@ -21,7 +21,7 @@ resource "aws_ecs_task_definition" "backend" {
     environment = [
       {
         name  = "DATABASE_URL"
-        value = "${local.backend_postgres_url}"
+        value = local.backend_postgres_url
       },
       {
         name  = "NODE_ENV"
@@ -54,6 +54,22 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name  = "EMAIL_FROM"
         value = aws_ses_email_identity.email_from.email
+      },
+      {
+        name  = "S3_BUCKET"
+        value = aws_s3_bucket.data.bucket
+      },
+      {
+        name  = "S3_REGION"
+        value = var.aws_region
+      },
+      {
+        name  = "S3_ACCESS_KEY_ID"
+        value = aws_iam_access_key.backend_data.id
+      },
+      {
+        name  = "S3_SECRET_ACCESS_KEY"
+        value = aws_iam_access_key.backend_data.secret
       }
     ]
     portMappings = [{
@@ -266,19 +282,17 @@ resource "aws_iam_role_policy" "ecs_execute_role" {
 
   policy = <<EOF
 {
-   "Version": "2012-10-17",
-   "Statement": [
-       {
-       "Effect": "Allow",
-       "Action": [
-            "ssmmessages:CreateControlChannel",
-            "ssmmessages:CreateDataChannel",
-            "ssmmessages:OpenControlChannel",
-            "ssmmessages:OpenDataChannel"
-       ],
-      "Resource": "*"
-      }
-   ]
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": [
+      "ssmmessages:CreateControlChannel",
+      "ssmmessages:CreateDataChannel",
+      "ssmmessages:OpenControlChannel",
+      "ssmmessages:OpenDataChannel"
+    ],
+    "Resource": "*"
+  }]
 }
 EOF
 }
@@ -301,7 +315,8 @@ resource "aws_ecr_repository" "backend" {
 
 resource "aws_ecr_repository_policy" "backend" {
   repository = aws_ecr_repository.backend.name
-  policy     = <<EOF
+
+  policy = <<EOF
   {
     "Version": "2008-10-17",
     "Statement": [
@@ -327,4 +342,59 @@ resource "aws_ecr_repository_policy" "backend" {
 
 output "backend_registry_url" {
   value = aws_ecr_repository.backend.repository_url
+}
+
+resource "aws_s3_bucket" "data" {
+  bucket = "nexxus-data-${var.environment}"
+}
+
+resource "aws_s3_bucket_acl" "data" {
+  bucket = aws_s3_bucket.data.id
+  acl    = "private"
+}
+
+data "aws_iam_policy_document" "backend_data" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "s3:DeleteObject",
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:PutObjectAcl"
+    ]
+    resources = ["${aws_s3_bucket.data.arn}/*"]
+  }
+  statement {
+    effect    = "Allow"
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.data.arn]
+  }
+}
+
+resource "aws_iam_user" "backend_data" {
+  name = "backend-data-user"
+}
+
+resource "aws_iam_access_key" "backend_data" {
+  user = aws_iam_user.backend_data.name
+}
+
+resource "aws_iam_policy" "backend_data" {
+  name        = "backend-data-policy"
+  description = "Allows operations on the backend data bucket"
+  policy      = data.aws_iam_policy_document.backend_data.json
+}
+
+resource "aws_iam_user_policy_attachment" "backend_data" {
+  user       = aws_iam_user.backend_data.name
+  policy_arn = aws_iam_policy.backend_data.arn
+}
+
+output "data_access_key_id" {
+  value = aws_iam_access_key.backend_data.id
+}
+
+output "data_access_key_secret" {
+  value     = aws_iam_access_key.backend_data.secret
+  sensitive = true
 }
