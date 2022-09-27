@@ -11,7 +11,7 @@ jobs:
     name: Terraform
     runs-on: ubuntu-latest
     env:
-      TF_VAR_DOMAIN: ${{ secrets.TF_VAR_DOMAIN }}
+      TF_VAR_domain: ${{ secrets.DOMAIN }}
       TF_INPUT: "false"
     steps:
       - name: Checkout
