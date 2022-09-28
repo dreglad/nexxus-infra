@@ -70,6 +70,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name  = "S3_SECRET_ACCESS_KEY"
         value = aws_iam_access_key.backend_data.secret
+      },
+      {
+        name  = "URL_APP"
+        value = "https://${var.domain}"
       }
     ]
     portMappings = [{
