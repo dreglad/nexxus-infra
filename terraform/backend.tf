@@ -53,7 +53,7 @@ resource "aws_ecs_task_definition" "backend" {
       },
       {
         name  = "EMAIL_FROM"
-        value = aws_ses_email_identity.email_from.email
+        value = "no-repply@${var.domain}"
       },
       {
         name  = "S3_BUCKET"

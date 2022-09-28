@@ -6,10 +6,6 @@ resource "aws_ses_domain_identity" "email" {
   domain = var.domain
 }
 
-resource "aws_ses_email_identity" "email_from" {
-  email = "no-reply@${var.domain}"
-}
-
 resource "aws_ses_domain_mail_from" "email" {
   domain           = aws_ses_domain_identity.email.domain
   mail_from_domain = "bounce.${aws_ses_domain_identity.email.domain}"
