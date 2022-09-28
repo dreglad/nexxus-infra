@@ -350,7 +350,7 @@ resource "aws_s3_bucket" "data" {
 
 resource "aws_s3_bucket_acl" "data" {
   bucket = aws_s3_bucket.data.id
-  acl    = "private"
+  acl    = "public-read"
 }
 
 data "aws_iam_policy_document" "backend_data" {
