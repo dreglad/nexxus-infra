@@ -148,8 +148,7 @@ resource "aws_alb_target_group" "backend" {
   target_type = "ip"
 
   health_check {
-    path    = "/"
-    matcher = "200-499"
+    path = "/healthz"
   }
 }
 
