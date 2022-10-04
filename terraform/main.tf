@@ -34,3 +34,8 @@ module "vpc" {
   enable_dns_hostnames = true
   enable_dns_support   = true
 }
+
+# Base domain name
+resource "aws_route53_zone" "nexxus" {
+  name = var.domain
+}
