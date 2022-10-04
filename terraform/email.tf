@@ -2,9 +2,6 @@
 Simple Email Service (SES)
 */
 
-locals {
-  email_domain = "app.${var.domain}"
-}
 resource "aws_ses_domain_identity" "email" {
   domain = local.email_domain
 }
