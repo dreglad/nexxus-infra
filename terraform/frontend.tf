@@ -1,7 +1,7 @@
 
 # S3 Bucket to host transpiled frontend application
 resource "aws_s3_bucket" "frontend" {
-  bucket        = var.domain
+  bucket        = "app.${var.domain}"
   force_destroy = true
 }
 
@@ -59,9 +59,8 @@ resource "aws_s3_object" "frontend_index" {
 
 # SSL Certificate for the frontend website
 resource "aws_acm_certificate" "frontend" {
-  domain_name               = var.domain
-  subject_alternative_names = ["www.${var.domain}"]
-  validation_method         = "DNS"
+  domain_name       = "app.${var.domain}"
+  validation_method = "DNS"
 
   lifecycle {
     create_before_destroy = true
@@ -70,11 +69,9 @@ resource "aws_acm_certificate" "frontend" {
 
 # DNS Records for the frondend website (root and www)
 resource "aws_route53_record" "frontend" {
-  for_each = toset(["", "www"])
-
   zone_id = aws_route53_zone.nexxus.zone_id
 
-  name = each.key
+  name = "app"
   type = "A"
 
   alias {
@@ -138,7 +135,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     response_page_path    = "/index.html"
   }
 
-  aliases = [var.domain, "www.${var.domain}"]
+  aliases = ["app.${var.domain}"]
 
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD", "OPTIONS"]
