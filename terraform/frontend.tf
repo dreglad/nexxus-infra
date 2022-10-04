@@ -1,7 +1,7 @@
 
 # S3 Bucket to host transpiled frontend application
 resource "aws_s3_bucket" "frontend" {
-  bucket        = "app.${var.domain}"
+  bucket        = local.frontend_domain
   force_destroy = true
 }
 
@@ -59,7 +59,7 @@ resource "aws_s3_object" "frontend_index" {
 
 # SSL Certificate for the frontend website
 resource "aws_acm_certificate" "frontend" {
-  domain_name       = "app.${var.domain}"
+  domain_name       = local.frontend_domain
   validation_method = "DNS"
 
   lifecycle {
@@ -135,7 +135,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     response_page_path    = "/index.html"
   }
 
-  aliases = ["app.${var.domain}"]
+  aliases = [local.frontend_domain]
 
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD", "OPTIONS"]

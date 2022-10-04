@@ -53,7 +53,7 @@ resource "aws_ecs_task_definition" "backend" {
       },
       {
         name  = "EMAIL_FROM"
-        value = "no-repply@${var.domain}"
+        value = "no-repply@${local.email_domain}"
       },
       {
         name  = "S3_BUCKET"
@@ -73,7 +73,7 @@ resource "aws_ecs_task_definition" "backend" {
       },
       {
         name  = "URL_APP"
-        value = "https://${var.domain}"
+        value = "https://${local.frontend_domain}"
       }
     ]
     portMappings = [{
@@ -183,7 +183,7 @@ resource "aws_alb_listener" "https" {
 }
 
 resource "aws_acm_certificate" "backend" {
-  domain_name       = "api.${var.domain}"
+  domain_name       = local.backend_domain
   validation_method = "DNS"
 
   lifecycle {
@@ -223,7 +223,7 @@ resource "aws_security_group" "backend" {
 resource "aws_route53_record" "api" {
   zone_id = aws_route53_zone.nexxus.zone_id
 
-  name = "api.${var.domain}"
+  name = local.backend_domain
   type = "A"
 
   alias {

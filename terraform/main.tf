@@ -19,6 +19,16 @@ provider "aws" {
   }
 }
 
+locals {
+  frontend_domain = "app.${var.domain}"
+  backend_domain  = "api.${var.domain}"
+  email_domain    = "app.${var.domain}"
+}
+
+resource "aws_route53_zone" "nexxus" {
+  name = var.domain
+}
+
 data "aws_caller_identity" "current" {}
 
 data "aws_availability_zones" "available" {}
@@ -36,6 +46,4 @@ module "vpc" {
 }
 
 # Base domain name
-resource "aws_route53_zone" "nexxus" {
-  name = var.domain
-}
+
