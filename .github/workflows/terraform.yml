@@ -1,6 +1,24 @@
 name: Terraform
 
 on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy to"
+        type: choice
+        required: true
+        options:
+          - Staging
+          - Production
+        default: Development
+      action:
+        description: "Action to perform"
+        type: choice
+        required: true
+        options:
+          - plan
+          - apply
+        default: plan
   push:
     branches:
       - main
@@ -39,7 +57,7 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event.inputs.action == 'plan'
         run: terraform plan -no-color
         continue-on-error: true
 
@@ -106,5 +124,5 @@ jobs:
         run: exit 1
 
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event.inputs.action == 'apply'
         run: terraform apply -auto-approve
