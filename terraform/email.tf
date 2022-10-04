@@ -2,8 +2,11 @@
 Simple Email Service (SES)
 */
 
+locals {
+  email_domain = "app.${var.domain}"
+}
 resource "aws_ses_domain_identity" "email" {
-  domain = var.domain
+  domain = local.email_domain
 }
 
 resource "aws_ses_domain_mail_from" "email" {
@@ -26,7 +29,7 @@ resource "aws_route53_record" "ses_dkim" {
 
 resource "aws_route53_record" "email_validation" {
   zone_id = aws_route53_zone.nexxus.zone_id
-  name    = "_amazonses.${var.domain}"
+  name    = "_amazonses.${local.email_domain}"
   type    = "TXT"
   ttl     = "600"
   records = [aws_ses_domain_identity.email.verification_token]
