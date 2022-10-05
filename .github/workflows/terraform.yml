@@ -60,8 +60,7 @@ jobs:
         if: github.event_name == 'pull_request' || github.event.inputs.action == 'plan'
         continue-on-error: true
         run: |
-          terraform plan -no-color -out=tfplan \
-            && terraform show -no-color tfplan
+          terraform plan -no-color
 
       - name: Reformat Plan
         run: |
@@ -137,4 +136,4 @@ jobs:
         id: apply
         continue-on-error: true
         run: |
-          terraform apply -no-color tfplan
+          terraform apply -no-color -auto-approve
