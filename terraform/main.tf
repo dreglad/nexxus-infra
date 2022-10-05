@@ -3,7 +3,7 @@ terraform {
     organization = "Sonatafy"
 
     workspaces {
-      name = "nexxus"
+      name = "nexxus-prod"
     }
   }
 }
