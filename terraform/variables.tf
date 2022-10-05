@@ -27,6 +27,12 @@ variable "database_password" {
   default     = "postgres"
 }
 
+variable "backend_image_tag" {
+  description = "Docker image tag for the backend"
+  type        = string
+  default     = "main"
+}
+
 variable "backend_resources" {
   type        = map(string)
   description = "CPU and Memory to allocate to the backend application container"
