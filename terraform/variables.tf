@@ -37,7 +37,7 @@ variable "backend_resources" {
   type        = map(string)
   description = "CPU and Memory to allocate to the backend application container"
   default = {
-    "cpu"    = "256"
+    "cpu"    = "512"
     "memory" = "1024"
   }
 }
