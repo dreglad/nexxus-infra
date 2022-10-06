@@ -132,7 +132,7 @@ jobs:
         run: exit 1
 
       - name: Terraform Apply
-        if: (steps.plan.outcome == 'success' && github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event.inputs.action == 'apply'
+        if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event.inputs.action == 'apply'
         id: apply
         continue-on-error: true
         run: |
