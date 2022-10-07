@@ -12,8 +12,8 @@ resource "aws_ecs_task_definition" "backend" {
   depends_on         = [aws_iam_role.ecs_role]
 
   container_definitions = jsonencode([{
-    name      = "backend${var.backend_image_tag}"
-    image     = aws_ecr_repository.backend.repository_url
+    name      = "backend"
+    image     = "aws_ecr_repository.backend.repository_url:${var.backend_image_tag}"
     essential = true
     linuxParameters = {
       initProcessEnabled = true
