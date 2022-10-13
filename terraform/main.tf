@@ -3,7 +3,10 @@ terraform {
     organization = "Sonatafy"
 
     workspaces {
-      name = "nexxus-prod"
+      tags = [
+        "nexxus",
+        "aws",
+      ]
     }
   }
 }
@@ -19,13 +22,18 @@ provider "aws" {
   }
 }
 
+provider "aws" {
+  alias  = "us-east-1"
+  region = "us-east-1"
+}
+
 locals {
   frontend_domain = "app.${var.domain}"
   backend_domain  = "api.${var.domain}"
   email_domain    = "app.${var.domain}"
 }
 
-resource "aws_route53_zone" "nexxus" {
+data "aws_route53_zone" "nexxus" {
   name = var.domain
 }
 
@@ -35,7 +43,7 @@ data "aws_availability_zones" "available" {}
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "3.15.0"
+  version = "3.16.0"
 
   name                 = "nexxus"
   cidr                 = "10.0.0.0/16"

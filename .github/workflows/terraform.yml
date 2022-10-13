@@ -1,6 +1,11 @@
 name: Terraform
 
 on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - production
   workflow_dispatch:
     inputs:
       environment:
@@ -8,9 +13,8 @@ on:
         type: choice
         required: true
         options:
-          - Staging
-          - Production
-        default: Development
+          - development
+          - production
       action:
         description: "Action to perform"
         type: choice
@@ -19,24 +23,28 @@ on:
           - plan
           - apply
         default: plan
-  push:
-    branches:
-      - main
-  pull_request:
 
 jobs:
   terraform:
     name: Terraform
     runs-on: ubuntu-latest
-    env:
-      TF_VAR_domain: ${{ secrets.DOMAIN }}
-      TF_INPUT: "false"
+    strategy:
+      fail-fast: false
+      matrix:
+        environment:
+          - development
+          - production
     defaults:
       run:
         working-directory: terraform
+    env:
+      TF_INPUT: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
+      - name: Set workspace environment
+        run: echo "TF_WORKSPACE=${{ github.event.inputs.environment || matrix.environment }}" >> $GITHUB_ENV
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
@@ -59,8 +67,7 @@ jobs:
         id: plan
         if: github.event_name == 'pull_request' || github.event.inputs.action == 'plan'
         continue-on-error: true
-        run: |
-          terraform plan -no-color
+        run: terraform plan -no-color
 
       - name: Reformat Plan
         run: |
@@ -87,11 +94,12 @@ jobs:
               issue_number: context.issue.number,
             })
             const botComment = comments.find(comment => {
-              return comment.user.type === 'Bot' && comment.body.includes('Terraform Format and Style')
+              return comment.user.type === 'Bot' && comment.body.includes('Terraform ${{ env.TF_WORKSPACE }}')
             })
 
             // 2. Prepare format of the comment
-            const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
+            const output = `## Terraform ${{ env.TF_WORKSPACE }}
+            #### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
             #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
             #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
             <details><summary>Validation Output</summary>
@@ -133,7 +141,5 @@ jobs:
 
       - name: Terraform Apply
         if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event.inputs.action == 'apply'
-        id: apply
         continue-on-error: true
-        run: |
-          terraform apply -no-color -auto-approve
+        run: terraform apply -no-color -auto-approve
