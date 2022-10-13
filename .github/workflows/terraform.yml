@@ -3,9 +3,7 @@ name: Terraform
 on:
   pull_request:
   push:
-    branches:
-      - main
-      - production
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
@@ -39,12 +37,13 @@ jobs:
         working-directory: terraform
     env:
       TF_INPUT: "false"
+      WORKSPACE_PREFIX: "nexxus-"
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
       - name: Set workspace environment
-        run: echo "TF_WORKSPACE=${{ github.event.inputs.environment || matrix.environment }}" >> $GITHUB_ENV
+        run: echo "TF_WORKSPACE=${{ env.WORKSPACE_PREFIX }}-${{ github.event.inputs.environment || matrix.environment }}" >> $GITHUB_ENV
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
@@ -98,7 +97,7 @@ jobs:
             })
 
             // 2. Prepare format of the comment
-            const output = `## Terraform ${{ env.TF_WORKSPACE }}
+            const output = `## Terraform \`${{ env.TF_WORKSPACE }}\`
             #### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
             #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
             #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
