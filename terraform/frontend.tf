@@ -59,6 +59,9 @@ resource "aws_s3_object" "frontend_index" {
 
 # SSL Certificate for the frontend website
 resource "aws_acm_certificate" "frontend" {
+  // ACM certificates must be created in us-east-1
+  provider = aws.us-east-1
+
   domain_name       = local.frontend_domain
   validation_method = "DNS"
 
@@ -69,7 +72,7 @@ resource "aws_acm_certificate" "frontend" {
 
 # DNS Records for the frondend website (root and www)
 resource "aws_route53_record" "frontend" {
-  zone_id = aws_route53_zone.nexxus.zone_id
+  zone_id = data.aws_route53_zone.nexxus.zone_id
 
   name = "app"
   type = "A"
@@ -91,7 +94,7 @@ resource "aws_route53_record" "frontend_validation" {
     }
   }
 
-  zone_id = aws_route53_zone.nexxus.zone_id
+  zone_id = data.aws_route53_zone.nexxus.zone_id
 
   name            = each.value.name
   type            = each.value.type
@@ -102,6 +105,8 @@ resource "aws_route53_record" "frontend_validation" {
 
 # SSL certificate validation
 resource "aws_acm_certificate_validation" "frontend" {
+  provider = aws.us-east-1
+
   certificate_arn         = aws_acm_certificate.frontend.arn
   validation_record_fqdns = [for record in aws_route53_record.frontend_validation : record.fqdn]
 }

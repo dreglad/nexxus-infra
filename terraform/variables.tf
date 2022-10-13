@@ -11,20 +11,17 @@ variable "domain" {
 variable "aws_region" {
   description = "AWS region to deploy the application"
   type        = string
-  default     = "us-east-1"
 }
 
 variable "database_instance_class" {
   description = "AWS profile to use for DB instance"
-  type        = string
   default     = "db.t3.micro"
 }
 
 variable "database_password" {
   description = "Password for the database"
-  type        = string
-  sensitive   = true
   default     = "postgres"
+  sensitive   = true
 }
 
 variable "backend_image_tag" {

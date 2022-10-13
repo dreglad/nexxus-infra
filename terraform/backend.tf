@@ -224,7 +224,7 @@ resource "aws_security_group" "backend" {
 }
 
 resource "aws_route53_record" "api" {
-  zone_id = aws_route53_zone.nexxus.zone_id
+  zone_id = data.aws_route53_zone.nexxus.zone_id
 
   name = local.backend_domain
   type = "A"
@@ -246,7 +246,7 @@ resource "aws_route53_record" "backend_validation" {
     }
   }
 
-  zone_id = aws_route53_zone.nexxus.zone_id
+  zone_id = data.aws_route53_zone.nexxus.zone_id
 
   allow_overwrite = true
   name            = each.value.name
@@ -263,7 +263,7 @@ resource "aws_acm_certificate_validation" "backend" {
 
 # Create IAM role for ECS task execution
 resource "aws_iam_role" "ecs_role" {
-  name = "role_ecs_tasks"
+  name = "role_ecs_tasks-${var.environment}"
 
   assume_role_policy = <<EOF
 {
@@ -283,7 +283,7 @@ EOF
 }
 
 resource "aws_iam_role_policy" "ecs_execute_role" {
-  name = "ecs_execute_role"
+  name = "ecs_execute_role-${var.environment}"
   role = aws_iam_role.ecs_role.name
 
   policy = <<EOF
@@ -350,6 +350,10 @@ output "backend_registry_url" {
   value = aws_ecr_repository.backend.repository_url
 }
 
+output "backend_data_bucket" {
+  value = aws_s3_bucket.data.bucket
+}
+
 resource "aws_s3_bucket" "data" {
   bucket = "nexxus-data-${var.environment}"
 }
@@ -398,7 +402,7 @@ data "aws_iam_policy_document" "backend_data" {
 }
 
 resource "aws_iam_user" "backend_data" {
-  name = "backend-data-user"
+  name = "backend-data-user-${var.environment}"
 }
 
 resource "aws_iam_access_key" "backend_data" {
@@ -406,7 +410,7 @@ resource "aws_iam_access_key" "backend_data" {
 }
 
 resource "aws_iam_policy" "backend_data" {
-  name        = "backend-data-policy"
+  name        = "backend-data-policy-${var.environment}"
   description = "Allows operations on the backend data bucket"
   policy      = data.aws_iam_policy_document.backend_data.json
 }
