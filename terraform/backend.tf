@@ -25,7 +25,7 @@ resource "aws_ecs_task_definition" "backend" {
       },
       {
         name  = "NODE_ENV"
-        value = "development"
+        value = var.environment
       },
       {
         name  = "PORT"
