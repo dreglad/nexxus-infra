@@ -18,6 +18,7 @@ resource "aws_ecs_task_definition" "backend" {
     linuxParameters = {
       initProcessEnabled = true
     }
+    command = ["yarn", "run", "start:${var.environment}"]
     environment = [
       {
         name  = "DATABASE_URL"
