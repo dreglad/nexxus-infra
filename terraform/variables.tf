@@ -27,7 +27,7 @@ variable "database_password" {
 variable "backend_image_tag" {
   description = "Docker image tag for the backend"
   type        = string
-  default     = "main"
+  default     = "latest"
 }
 
 variable "backend_resources" {
