@@ -1,5 +1,37 @@
+
+resource "aws_ecs_cluster" "backend" {
+  name = "nexxus-backend-${var.environment}"
+}
+
+resource "aws_ecs_service" "backend" {
+  name = "nexxus-backend-${var.environment}"
+
+  cluster         = aws_ecs_cluster.backend.id
+  task_definition = aws_ecs_task_definition.backend.arn
+
+  launch_type   = "FARGATE"
+  desired_count = var.backend_desired_count
+
+  deployment_minimum_healthy_percent = 0
+  deployment_maximum_percent         = 200
+
+  enable_execute_command = true
+
+  network_configuration {
+    subnets          = module.vpc.public_subnets
+    security_groups  = [aws_security_group.backend_db.id, aws_security_group.backend.id]
+    assign_public_ip = true
+  }
+
+  load_balancer {
+    target_group_arn = aws_alb_target_group.backend.arn
+    container_name   = "nexxus-backend"
+    container_port   = 80
+  }
+}
+
 resource "aws_ecs_task_definition" "backend" {
-  family = "backend"
+  family = "nexxus-backend-${var.environment}"
 
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
@@ -12,7 +44,7 @@ resource "aws_ecs_task_definition" "backend" {
   depends_on         = [aws_iam_role.ecs_role]
 
   container_definitions = jsonencode([{
-    name      = "backend"
+    name      = "nexxus-backend"
     image     = "${aws_ecr_repository.backend.repository_url}:${var.backend_image_tag}"
     essential = true
     linuxParameters = {
@@ -99,42 +131,11 @@ resource "random_password" "backend_jwt_secret" {
 }
 
 resource "aws_cloudwatch_log_group" "backend" {
-  name = "backend"
-}
-
-resource "aws_ecs_cluster" "backend" {
-  name = "backend"
-}
-
-resource "aws_ecs_service" "backend" {
-  name = "backend"
-
-  cluster         = aws_ecs_cluster.backend.id
-  task_definition = aws_ecs_task_definition.backend.arn
-
-  launch_type   = "FARGATE"
-  desired_count = var.backend_desired_count
-
-  deployment_minimum_healthy_percent = 0
-  deployment_maximum_percent         = 200
-
-  enable_execute_command = true
-
-  network_configuration {
-    subnets          = module.vpc.public_subnets
-    security_groups  = [aws_security_group.backend_db.id, aws_security_group.backend.id]
-    assign_public_ip = true
-  }
-
-  load_balancer {
-    target_group_arn = aws_alb_target_group.backend.arn
-    container_name   = "backend"
-    container_port   = 80
-  }
+  name = "nexxus-backend-${var.environment}"
 }
 
 resource "aws_lb" "backend" {
-  name = "backend"
+  name = "nexxus-backend-${var.environment}"
 
   internal           = false
   load_balancer_type = "application"
@@ -145,7 +146,8 @@ resource "aws_lb" "backend" {
 }
 
 resource "aws_alb_target_group" "backend" {
-  name        = "backend"
+  name = "nexxus-backend-${var.environment}"
+
   port        = 80
   protocol    = "HTTP"
   vpc_id      = module.vpc.vpc_id
@@ -196,7 +198,7 @@ resource "aws_acm_certificate" "backend" {
 }
 
 resource "aws_security_group" "backend" {
-  name        = "backend"
+  name        = "nexxus-backend-${var.environment}"
   description = "Allow TLS inbound traffic on port 80 (http)"
 
   vpc_id                 = module.vpc.vpc_id
@@ -312,7 +314,8 @@ resource "aws_iam_role_policy_attachment" "ecs_policy_attachment" {
 }
 
 resource "aws_ecr_repository" "backend" {
-  name                 = "nexxus-backend"
+  name = "nexxus-backend-${var.environment}"
+
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -413,7 +416,8 @@ resource "aws_iam_access_key" "backend_data" {
 resource "aws_iam_policy" "backend_data" {
   name        = "backend-data-policy-${var.environment}"
   description = "Allows operations on the backend data bucket"
-  policy      = data.aws_iam_policy_document.backend_data.json
+
+  policy = data.aws_iam_policy_document.backend_data.json
 }
 
 resource "aws_iam_user_policy_attachment" "backend_data" {
