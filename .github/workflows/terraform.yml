@@ -46,7 +46,7 @@ jobs:
         run: echo "TF_WORKSPACE=${{ env.WORKSPACE_PREFIX }}${{ github.event.inputs.environment || matrix.environment }}" >> $GITHUB_ENV
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v3
         with:
           cli_config_credentials_token: ${{ secrets.TERRAFORM_CLOUD_TOKEN }}
 
